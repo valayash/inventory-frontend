@@ -2,6 +2,24 @@
 
 This is the frontend for the Inventory Management System, built with React and TypeScript. It provides a user-friendly interface for both distributors and shop owners to manage inventory, sales, and analytics.
 
+## Deployment
+
+- **Live Application:** [https://inventory-frontend-odle.onrender.com](https://inventory-frontend-odle.onrender.com)
+- **Backend API:** [https://inventory-backend-x27d.onrender.com](https://inventory-backend-x27d.onrender.com)
+
+## Login Credentials
+
+Here are some sample credentials to access the deployed application.
+
+### Distributor Account
+-   **Username**: `admin`
+-   **Password**: `admin123`
+
+### Shop Owner Account
+*(You can create more shops and users via the Distributor portal)*
+-   **Username**: `valayash`
+-   **Password**: `123456`
+
 ## Key Features
 
 The frontend is divided into two main portals based on user roles.
