@@ -1,12 +1,12 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import ProductCatalog from '../components/ProductCatalog';
+import { logout } from '../utils/auth';
 
 const ProductCatalogPage: React.FC = () => {
+  const navigate = useNavigate();
   const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user_info');
-    window.location.href = '/';
+    logout(navigate);
   };
 
   const userInfo = JSON.parse(localStorage.getItem('user_info') || '{}');

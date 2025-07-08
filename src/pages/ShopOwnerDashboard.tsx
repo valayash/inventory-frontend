@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { logout } from '../utils/auth';
+import { Link } from 'react-router-dom';
+
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8001/api';
 
 interface DashboardSummary {
   total_sales_current_month: number;
@@ -32,10 +36,10 @@ const ShopOwnerDashboard: React.FC = () => {
       
       // Fetch dashboard summary
       const [summaryResponse, topProductsResponse] = await Promise.all([
-        axios.get('http://127.0.0.1:8001/api/dashboard/shop/summary/', {
+        axios.get(`${API_BASE_URL}/dashboard/shop/summary/`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        axios.get('http://127.0.0.1:8001/api/dashboard/shop/top-products/', {
+        axios.get(`${API_BASE_URL}/dashboard/shop/top-products/`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
@@ -51,10 +55,7 @@ const ShopOwnerDashboard: React.FC = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user_info');
-    navigate('/');
+    logout(navigate);
   };
 
   const userInfo = JSON.parse(localStorage.getItem('user_info') || '{}');
@@ -153,24 +154,13 @@ const ShopOwnerDashboard: React.FC = () => {
             </div>
             
             <div className="dashboard-card">
-              <h3>Sales History</h3>
-              <p>View your shop's sales history and reports</p>
+              <h3>Analytics & Reports</h3>
+              <p>View your shop's performance and sales data</p>
               <button 
                 className="action-button"
-                onClick={() => navigate('/shop-owner/sales-history')}
+                onClick={() => navigate('/shop-owner/analytics')}
               >
-                View Sales History
-              </button>
-            </div>
-            
-            <div className="dashboard-card">
-              <h3>Financial Summary</h3>
-              <p>View monthly financial performance</p>
-              <button 
-                className="action-button"
-                onClick={() => navigate('/shop-owner/financial')}
-              >
-                View Financials
+                View Analytics
               </button>
             </div>
           </div>

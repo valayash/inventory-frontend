@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { format } from 'date-fns';
+
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8001/api';
 
 interface Shop {
   id: number;
@@ -66,13 +69,14 @@ const InventoryDistributionPage: React.FC = () => {
     fetchDistributionData();
   }, []);
 
-  const fetchDistributionData = async () => {
+  const fetchDistributionData = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await axios.get('http://127.0.0.1:8001/api/distribution/', {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_BASE_URL}/distribution/`, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
       
       setShops(response.data.shop_inventory_summary);
@@ -84,7 +88,7 @@ const InventoryDistributionPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const searchFrames = (query: string): Frame[] => {
     if (!query || query.length < 2) return [];
@@ -225,7 +229,7 @@ const InventoryDistributionPage: React.FC = () => {
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('token');
       
       // Clean up the data for API (remove frontend-specific fields)
       const cleanDistributions = validDistributions.map(dist => ({
@@ -240,11 +244,11 @@ const InventoryDistributionPage: React.FC = () => {
       console.log('Sending to API:', cleanDistributions);
 
       const response = await axios.post(
-        'http://127.0.0.1:8001/api/distribution/bulk/',
+        `${API_BASE_URL}/distribution/bulk/`,
         { distributions: cleanDistributions },
         {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         }

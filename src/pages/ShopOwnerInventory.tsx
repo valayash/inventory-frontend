@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { format } from 'date-fns';
+
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8001/api';
 
 interface ShopInventory {
   id: number;
@@ -43,9 +46,12 @@ const ShopOwnerInventory: React.FC = () => {
 
   const fetchInventory = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await axios.get('http://127.0.0.1:8001/api/shop-inventory/', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_BASE_URL}/shop-inventory/`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
       setInventory(response.data);
     } catch (err) {
@@ -63,12 +69,12 @@ const ShopOwnerInventory: React.FC = () => {
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(item =>
-        item.frame_name.toLowerCase().includes(searchLower) ||
-        item.frame_product_id.toLowerCase().includes(searchLower) ||
-        item.frame_brand.toLowerCase().includes(searchLower) ||
-        item.frame_type.toLowerCase().includes(searchLower) ||
-        item.frame_color.toLowerCase().includes(searchLower) ||
-        item.frame_material.toLowerCase().includes(searchLower)
+        (item.frame_name && item.frame_name.toLowerCase().includes(searchLower)) ||
+        (item.frame_product_id && item.frame_product_id.toLowerCase().includes(searchLower)) ||
+        (item.frame_brand && item.frame_brand.toLowerCase().includes(searchLower)) ||
+        (item.frame_type && item.frame_type.toLowerCase().includes(searchLower)) ||
+        (item.frame_color && item.frame_color.toLowerCase().includes(searchLower)) ||
+        (item.frame_material && item.frame_material.toLowerCase().includes(searchLower))
       );
     }
 
@@ -264,12 +270,12 @@ const ShopOwnerInventory: React.FC = () => {
             <tbody>
               {filteredInventory.map(item => (
                 <tr key={item.id} className={getStockStatus(item.quantity_remaining)}>
-                  <td className="product-id">{item.frame_product_id}</td>
-                  <td className="frame-name">{item.frame_name}</td>
-                  <td>{item.frame_brand}</td>
-                  <td>{item.frame_type}</td>
-                  <td>{item.frame_color}</td>
-                  <td className="price">${parseFloat(item.frame_price).toFixed(2)}</td>
+                  <td className="product-id">{item.frame_product_id || 'N/A'}</td>
+                  <td className="frame-name">{item.frame_name || 'Unknown Frame'}</td>
+                  <td>{item.frame_brand || 'N/A'}</td>
+                  <td>{item.frame_type || 'N/A'}</td>
+                  <td>{item.frame_color || 'N/A'}</td>
+                  <td className="price">${item.frame_price ? parseFloat(item.frame_price).toFixed(2) : '0.00'}</td>
                   <td className="stock-cell">
                     <span className={`stock-badge ${getStockStatus(item.quantity_remaining)}`}>
                       {item.quantity_remaining}

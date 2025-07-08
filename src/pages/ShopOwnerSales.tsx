@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
+import { format } from 'date-fns';
+
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8001/api';
 
 interface ShopInventory {
   id: number;
@@ -56,7 +59,7 @@ const ShopOwnerSales: React.FC = () => {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    fetchData();
+    fetchInitialData();
   }, []);
 
   useEffect(() => {
@@ -75,28 +78,27 @@ const ShopOwnerSales: React.FC = () => {
     }
   }, [searchParams, inventory]);
 
-  const fetchData = async () => {
+  const fetchInitialData = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      
-      const [inventoryResponse, lensResponse] = await Promise.all([
-        axios.get('http://127.0.0.1:8001/api/shop-inventory/', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        axios.get('http://127.0.0.1:8001/api/lens-types/', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const [inventoryRes, lensRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/shop-inventory/`, { headers }),
+        axios.get(`${API_BASE_URL}/lens-types/`, { headers })
       ]);
 
-      setInventory(inventoryResponse.data.filter((item: ShopInventory) => item.quantity_remaining > 0));
-      setLensTypes(lensResponse.data);
+      setInventory(inventoryRes.data.results || inventoryRes.data);
+      setLensTypes(lensRes.data);
+      setFilteredInventory(inventoryRes.data.results || inventoryRes.data);
     } catch (err) {
       console.error('Error fetching data:', err);
       setError('Failed to load data');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const filterInventory = () => {
     if (!searchTerm) {
@@ -106,11 +108,11 @@ const ShopOwnerSales: React.FC = () => {
 
     const searchLower = searchTerm.toLowerCase();
     const filtered = inventory.filter(item =>
-      item.frame_name.toLowerCase().includes(searchLower) ||
-      item.frame_product_id.toLowerCase().includes(searchLower) ||
-      item.frame_brand.toLowerCase().includes(searchLower) ||
-      item.frame_type.toLowerCase().includes(searchLower) ||
-      item.frame_color.toLowerCase().includes(searchLower)
+      (item.frame_name && item.frame_name.toLowerCase().includes(searchLower)) ||
+      (item.frame_product_id && item.frame_product_id.toLowerCase().includes(searchLower)) ||
+      (item.frame_brand && item.frame_brand.toLowerCase().includes(searchLower)) ||
+      (item.frame_type && item.frame_type.toLowerCase().includes(searchLower)) ||
+      (item.frame_color && item.frame_color.toLowerCase().includes(searchLower))
     );
     setFilteredInventory(filtered);
   };
@@ -130,8 +132,8 @@ const ShopOwnerSales: React.FC = () => {
   const calculateTotalPrice = () => {
     if (!selectedInventoryItem || !selectedLensType) return 0;
     
-    const framePrice = parseFloat(selectedInventoryItem.frame_price);
-    const lensPrice = parseFloat(selectedLensType.price_modifier);
+    const framePrice = selectedInventoryItem.frame_price ? parseFloat(selectedInventoryItem.frame_price) : 0;
+    const lensPrice = selectedLensType.price_modifier ? parseFloat(selectedLensType.price_modifier) : 0;
     const unitPrice = customSalePrice ? parseFloat(customSalePrice) : framePrice + lensPrice;
     
     return unitPrice * quantity;
@@ -152,26 +154,27 @@ const ShopOwnerSales: React.FC = () => {
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token');
-      const framePrice = parseFloat(selectedInventoryItem.frame_price);
-      const lensPrice = parseFloat(selectedLensType.price_modifier);
+      const token = localStorage.getItem('token');
+      const framePrice = selectedInventoryItem.frame_price ? parseFloat(selectedInventoryItem.frame_price) : 0;
+      const lensPrice = selectedLensType.price_modifier ? parseFloat(selectedLensType.price_modifier) : 0;
       const salePrice = customSalePrice ? parseFloat(customSalePrice) : framePrice + lensPrice;
 
       const saleData = {
         shop_inventory_id: selectedInventoryItem.id,
         quantity: quantity,
-        sale_price: salePrice
+        sale_price: salePrice,
+        notes: 'Sale notes'
       };
 
-      await axios.post('http://127.0.0.1:8001/api/process-sale/', saleData, {
+      await axios.post(`${API_BASE_URL}/process-sale/`, saleData, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
       // Show success message
-      alert(`Sale processed successfully!\n\nItem: ${selectedInventoryItem.frame_name}\nLens: ${selectedLensType.name}\nQuantity: ${quantity}\nTotal: $${calculateTotalPrice().toFixed(2)}`);
+      alert(`Sale processed successfully!\n\nItem: ${selectedInventoryItem.frame_name || 'Unknown Frame'}\nLens: ${selectedLensType.name}\nQuantity: ${quantity}\nTotal: $${calculateTotalPrice().toFixed(2)}`);
 
       // Reset form
       setSelectedInventoryItem(null);
@@ -181,7 +184,7 @@ const ShopOwnerSales: React.FC = () => {
       setShowLensSelection(false);
       
       // Refresh inventory
-      fetchData();
+      fetchInitialData();
     } catch (err: any) {
       console.error('Error processing sale:', err);
       if (err.response?.data?.error) {
@@ -274,14 +277,14 @@ const ShopOwnerSales: React.FC = () => {
                 filteredInventory.map(item => (
                   <div key={item.id} className="inventory-card" onClick={() => handleInventoryItemSelect(item)}>
                     <div className="item-header">
-                      <h3>{item.frame_name}</h3>
-                      <span className="product-id">{item.frame_product_id}</span>
+                      <h3>{item.frame_name || 'Unknown Frame'}</h3>
+                      <span className="product-id">{item.frame_product_id || 'N/A'}</span>
                     </div>
                     <div className="item-details">
-                      <p><strong>Brand:</strong> {item.frame_brand}</p>
-                      <p><strong>Type:</strong> {item.frame_type}</p>
-                      <p><strong>Color:</strong> {item.frame_color}</p>
-                      <p><strong>Price:</strong> ${parseFloat(item.frame_price).toFixed(2)}</p>
+                      <p><strong>Brand:</strong> {item.frame_brand || 'N/A'}</p>
+                      <p><strong>Type:</strong> {item.frame_type || 'N/A'}</p>
+                      <p><strong>Color:</strong> {item.frame_color || 'N/A'}</p>
+                      <p><strong>Price:</strong> ${item.frame_price ? parseFloat(item.frame_price).toFixed(2) : '0.00'}</p>
                       <p><strong>Available Stock:</strong> {item.quantity_remaining}</p>
                     </div>
                     <button className="select-button">Select This Item</button>
@@ -299,10 +302,10 @@ const ShopOwnerSales: React.FC = () => {
             
             <div className="selected-item-summary">
               <h3>Selected Item</h3>
-              <div className="item-summary">
-                <span className="item-name">{selectedInventoryItem.frame_name}</span>
-                <span className="item-id">({selectedInventoryItem.frame_product_id})</span>
-                <span className="item-price">${parseFloat(selectedInventoryItem.frame_price).toFixed(2)}</span>
+                             <div className="item-summary">
+                 <span className="item-name">{selectedInventoryItem.frame_name || 'Unknown Frame'}</span>
+                 <span className="item-id">({selectedInventoryItem.frame_product_id || 'N/A'})</span>
+                 <span className="item-price">${selectedInventoryItem.frame_price ? parseFloat(selectedInventoryItem.frame_price).toFixed(2) : '0.00'}</span>
                 <button 
                   onClick={() => setShowLensSelection(false)}
                   className="change-item-btn"

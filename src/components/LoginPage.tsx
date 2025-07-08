@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8001/api';
+
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -16,21 +18,20 @@ const LoginPage: React.FC = () => {
 
     try {
       // First, get the access token
-      const tokenResponse = await axios.post('http://127.0.0.1:8001/api/token/', {
+      const tokenResponse = await axios.post(`${API_BASE_URL}/token/`, {
         username,
         password,
       });
 
-      const { access, refresh } = tokenResponse.data;
+      const accessToken = tokenResponse.data.access;
       
       // Store tokens
-      localStorage.setItem('access_token', access);
-      localStorage.setItem('refresh_token', refresh);
+      localStorage.setItem('token', accessToken);
 
       // Get user information
-      const userInfoResponse = await axios.get('http://127.0.0.1:8001/api/user-info/', {
+      const userInfoResponse = await axios.get(`${API_BASE_URL}/user-info/`, {
         headers: {
-          'Authorization': `Bearer ${access}`
+          'Authorization': `Bearer ${accessToken}`
         }
       });
 

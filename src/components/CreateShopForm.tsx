@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8001/api';
 
 interface CreateShopFormData {
   name: string;
@@ -92,9 +95,9 @@ const CreateShopForm: React.FC<CreateShopFormProps> = ({ onSuccess, onCancel }) 
     setSuccessMessage('');
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('token');
       const response = await axios.post(
-        'http://127.0.0.1:8001/api/shops/',
+        `${API_BASE_URL}/shops/`,
         formData,
         {
           headers: {

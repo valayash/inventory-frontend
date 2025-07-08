@@ -5,10 +5,12 @@ import DistributorPage from './pages/DistributorPage';
 import ShopOwnerDashboard from './pages/ShopOwnerDashboard';
 import ShopOwnerInventory from './pages/ShopOwnerInventory';
 import ShopOwnerSales from './pages/ShopOwnerSales';
+import ShopOwnerAnalyticsPage from './pages/ShopOwnerAnalyticsPage';
 import ProductCatalogPage from './pages/ProductCatalogPage';
 import ShopManagementPage from './pages/ShopManagementPage';
 import InventoryDistributionPage from './pages/InventoryDistributionPage';
 import ShopInventoryDetailPage from './pages/ShopInventoryDetailPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
@@ -19,9 +21,9 @@ function App() {
   
   const getInitialRoute = () => {
     if (userInfo.role === 'DISTRIBUTOR') {
-      return '/distributor';
+        return '/distributor';
     } else if (userInfo.role === 'SHOP_OWNER') {
-      return '/shop-owner';
+        return '/shop-owner';
     }
     return '/';
   };
@@ -82,6 +84,16 @@ function App() {
             } 
           />
           
+          {/* Analytics Page */}
+          <Route 
+            path="/distributor/analytics" 
+            element={
+              <ProtectedRoute requiredRole="DISTRIBUTOR">
+                <AnalyticsPage />
+              </ProtectedRoute>
+            } 
+          />
+          
           {/* Shop Inventory Detail Page */}
           <Route 
             path="/distributor/shop-inventory/:shopId" 
@@ -118,6 +130,16 @@ function App() {
             element={
               <ProtectedRoute requiredRole="SHOP_OWNER">
                 <ShopOwnerSales />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Shop Owner Analytics */}
+          <Route 
+            path="/shop-owner/analytics" 
+            element={
+              <ProtectedRoute requiredRole="SHOP_OWNER">
+                <ShopOwnerAnalyticsPage />
               </ProtectedRoute>
             } 
           />

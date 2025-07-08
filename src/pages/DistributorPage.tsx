@@ -1,14 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { logout } from '../utils/auth';
 
 const DistributorPage: React.FC = () => {
   const navigate = useNavigate();
   
   const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user_info');
-    navigate('/login');
+    logout(navigate);
   };
 
   const userInfo = JSON.parse(localStorage.getItem('user_info') || '{}');
@@ -63,26 +61,14 @@ const DistributorPage: React.FC = () => {
           <div className="dashboard-card">
             <h3>Sales Analytics</h3>
             <p>View sales reports, track performance, and analyze trends across all shops.</p>
-            <button className="action-button">
+            <button 
+              className="action-button"
+              onClick={() => navigate('/distributor/analytics')}
+            >
               View Analytics
             </button>
           </div>
 
-          <div className="dashboard-card">
-            <h3>Orders & Requests</h3>
-            <p>Manage shop orders, process requests, and handle inventory transfers.</p>
-            <button className="action-button">
-              View Orders
-            </button>
-          </div>
-
-          <div className="dashboard-card">
-            <h3>System Settings</h3>
-            <p>Configure system settings, manage user permissions, and system preferences.</p>
-            <button className="action-button">
-              System Settings
-            </button>
-          </div>
         </div>
       </div>
     </div>

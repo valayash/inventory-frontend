@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8001/api';
 
 interface Shop {
   id: number;
@@ -38,6 +41,8 @@ const EditShopForm: React.FC<EditShopFormProps> = ({ shop, onSuccess, onCancel }
   const [errors, setErrors] = useState<any>({});
   const [successMessage, setSuccessMessage] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -93,23 +98,17 @@ const EditShopForm: React.FC<EditShopFormProps> = ({ shop, onSuccess, onCancel }
     setSuccessMessage('');
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await axios.put(
-        `http://127.0.0.1:8001/api/shops/${shop.id}/`,
+      const token = localStorage.getItem('token');
+      // Handle update
+      await axios.put(
+        `${API_BASE_URL}/shops/${shop.id}/`,
         formData,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        }
+        { headers: { 'Authorization': `Bearer ${token}` } }
       );
-
       setSuccessMessage('Shop updated successfully!');
       setTimeout(() => {
         onSuccess();
       }, 1500);
-
     } catch (err: any) {
       console.error('Error updating shop:', err);
       if (err.response?.data) {
@@ -129,7 +128,7 @@ const EditShopForm: React.FC<EditShopFormProps> = ({ shop, onSuccess, onCancel }
     try {
       const token = localStorage.getItem('access_token');
       await axios.delete(
-        `http://127.0.0.1:8001/api/shops/${shop.id}/`,
+        `${API_BASE_URL}/shops/${shop.id}/`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,

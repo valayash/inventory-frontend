@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { format } from 'date-fns';
+import BillingModal from '../components/BillingModal';
+
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8001/api';
 
 interface Shop {
   id: number;
@@ -56,6 +60,20 @@ interface FinancialSummary {
   units_sold: number;
 }
 
+interface BillItem {
+  frame_id: string;
+  frame_name: string;
+  quantity_sold: number;
+  total_cost: number;
+}
+
+interface BillingReport {
+  shop_name: string;
+  month: string;
+  total_amount_due: number;
+  items: BillItem[];
+}
+
 interface ManualInventoryItem {
   frame_id: string;
   quantity: number;
@@ -74,8 +92,12 @@ const ShopInventoryDetailPage: React.FC = () => {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [financialSummary, setFinancialSummary] = useState<FinancialSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [frames, setFrames] = useState<Frame[]>([]);
+  
+  // Modal State
+  const [isBillingModalOpen, setBillingModalOpen] = useState(false);
+  const [billingReport, setBillingReport] = useState<BillingReport | null>(null);
   
   // Manual inventory addition state
   const [showManualForm, setShowManualForm] = useState(false);
@@ -86,6 +108,9 @@ const ShopInventoryDetailPage: React.FC = () => {
   const [showCSVUpload, setShowCSVUpload] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvUploading, setCsvUploading] = useState(false);
+  const [loadingBill, setLoadingBill] = useState(false);
+  const [loadingFrames, setLoadingFrames] = useState(false);
+  const [stockAdd, setStockAdd] = useState<{ [key: number]: { quantity: number; cost: number } }>({});
 
   useEffect(() => {
     if (shopId) {
@@ -94,13 +119,14 @@ const ShopInventoryDetailPage: React.FC = () => {
     }
   }, [shopId]);
 
-  const fetchShopInventoryDetails = async () => {
+  const fetchShopInventoryDetails = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await axios.get(`http://127.0.0.1:8001/api/shops/${shopId}/inventory/`, {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_BASE_URL}/shops/${shopId}/inventory/`, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
       
       setShop(response.data.shop);
@@ -113,19 +139,41 @@ const ShopInventoryDetailPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  }, [shopId]);
+
+  const handleGenerateBill = async () => {
+    try {
+      setLoadingBill(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_BASE_URL}/shops/${shopId}/billing-report/`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setBillingReport(response.data);
+      setBillingModalOpen(true);
+    } catch (err) {
+      console.error('Error generating bill:', err);
+      setError('Failed to generate billing report.');
+    } finally {
+      setLoadingBill(false);
+    }
   };
 
   const fetchFrames = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await axios.get('http://127.0.0.1:8001/api/frames/', {
+      setLoadingFrames(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_BASE_URL}/frames/`, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
       setFrames(response.data.results || response.data);
     } catch (err) {
       console.error('Error fetching frames:', err);
+    } finally {
+      setLoadingFrames(false);
     }
   };
 
@@ -211,7 +259,7 @@ const ShopInventoryDetailPage: React.FC = () => {
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('token');
       const payload = {
         shop_id: parseInt(shopId!),
         items: validItems.map(item => ({
@@ -221,7 +269,7 @@ const ShopInventoryDetailPage: React.FC = () => {
         }))
       };
 
-      await axios.post('http://127.0.0.1:8001/api/stock-in/', payload, {
+      await axios.post(`${API_BASE_URL}/stock-in/`, payload, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -251,12 +299,12 @@ const ShopInventoryDetailPage: React.FC = () => {
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('token');
       const formData = new FormData();
       formData.append('file', csvFile);
       formData.append('shop_id', shopId!);
 
-      await axios.post('http://127.0.0.1:8001/api/inventory-csv-upload/', formData, {
+      await axios.post(`${API_BASE_URL}/inventory-csv-upload/`, formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -289,6 +337,54 @@ F003,15`;
     a.download = 'inventory_template.csv';
     a.click();
     window.URL.revokeObjectURL(url);
+  };
+
+  const handleAddStock = async (inventoryId: number, quantity: number, cost: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      const payload = {
+        shop_id: parseInt(shopId || '0', 10),
+        items: [{
+          inventory_id: inventoryId,
+          quantity: quantity,
+          cost_per_unit: cost
+        }]
+      };
+      await axios.post(`${API_BASE_URL}/stock-in/`, payload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      fetchShopInventoryDetails(); // Re-fetch details to show updated stock
+      setStockAdd(prev => ({ ...prev, [inventoryId]: { quantity: 0, cost: 0 } }));
+    } catch (err) {
+      console.error('Error adding stock:', err);
+      setError('Failed to add stock.');
+    }
+  };
+
+  const handleCsvUpload = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('shop_id', shopId || '');
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_BASE_URL}/inventory-csv-upload/`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      fetchShopInventoryDetails(); // Refresh inventory
+    } catch (err) {
+      console.error('Error uploading CSV:', err);
+      setError('Failed to upload CSV. Please check the file format.');
+    }
+  };
+
+  const handleStockChange = (inventoryId: number, field: 'quantity' | 'cost', value: string) => {
+    const numValue = parseFloat(value) || 0;
+    // ... existing code ...
   };
 
   if (loading) {
@@ -352,50 +448,55 @@ F003,15`;
 
       {/* Summary Cards */}
       {summary && (
-        <div className="summary-cards">
+        <div className="summary-cards-grid">
           <div className="summary-card">
-            <h3>Total Items</h3>
-            <p className="summary-value">{summary.total_items}</p>
+            <h3>Total Inventory Value</h3>
+            <div className="value">${summary.total_value.toFixed(2)}</div>
+            <div className="description">Based on current stock and frame prices</div>
           </div>
           <div className="summary-card">
-            <h3>Total Value</h3>
-            <p className="summary-value">${summary.total_value.toFixed(2)}</p>
+            <h3>Total Items in Stock</h3>
+            <div className="value">{summary.total_items}</div>
+            <div className="description">Total unique frame types</div>
           </div>
-          <div className="summary-card">
-            <h3>Total Cost</h3>
-            <p className="summary-value">${summary.total_cost.toFixed(2)}</p>
-          </div>
-          <div className="summary-card warning">
+          <div className="summary-card alert">
             <h3>Low Stock Items</h3>
-            <p className="summary-value">{summary.low_stock_count}</p>
+            <div className="value">{summary.low_stock_count}</div>
+            <div className="description">Items with less than 5 units</div>
           </div>
         </div>
       )}
 
       {/* Financial Summary */}
       {financialSummary && (
-        <div className="financial-summary">
-          <h3>Monthly Financial Summary ({financialSummary.month})</h3>
+        <div className="financial-summary-card">
+          <div className="financial-summary-header">
+            <h3>Financial Summary for {format(new Date(financialSummary.month), 'MMMM yyyy')}</h3>
+            <button onClick={handleGenerateBill} className="generate-bill-button">
+              Generate Bill
+            </button>
+          </div>
           <div className="financial-grid">
-            <div className="financial-item">
-              <span className="label">Revenue:</span>
-              <span className="value">${financialSummary.total_revenue}</span>
+            <div className="financial-metric">
+              <div className="metric-label">Units Sold</div>
+              <div className="metric-value">{financialSummary.units_sold}</div>
             </div>
-            <div className="financial-item">
-              <span className="label">Cost:</span>
-              <span className="value">${financialSummary.total_cost}</span>
-            </div>
-            <div className="financial-item">
-              <span className="label">Profit:</span>
-              <span className="value">${financialSummary.total_profit}</span>
-            </div>
-            <div className="financial-item">
-              <span className="label">Units Sold:</span>
-              <span className="value">{financialSummary.units_sold}</span>
+            <div className="financial-metric">
+              <div className="metric-label">Amount to Pay Distributor</div>
+              <div className="metric-value distributor-payment">${parseFloat(financialSummary.amount_to_pay_distributor).toFixed(2)}</div>
             </div>
           </div>
         </div>
       )}
+
+      <BillingModal 
+        isOpen={isBillingModalOpen}
+        onClose={() => setBillingModalOpen(false)}
+        shopName={billingReport?.shop_name}
+        month={billingReport?.month}
+        items={billingReport?.items}
+        totalAmountDue={billingReport?.total_amount_due}
+      />
 
       {/* Manual Inventory Form */}
       {showManualForm && (
@@ -561,7 +662,7 @@ F003,15`;
       )}
 
       {/* Current Inventory Table */}
-      <div className="inventory-table-section">
+      <div className="inventory-table-container">
         <h3>Current Inventory</h3>
         {inventory.length === 0 ? (
           <p>No inventory items found.</p>
@@ -576,30 +677,26 @@ F003,15`;
                   <th>Received</th>
                   <th>Sold</th>
                   <th>Remaining</th>
-                  <th>Cost/Unit</th>
+                  <th>Cost per Unit</th>
                   <th>Total Cost</th>
                   <th>Total Revenue</th>
-                  <th>Profit</th>
                   <th>Last Restocked</th>
                 </tr>
               </thead>
               <tbody>
                 {inventory.map(item => (
-                  <tr key={item.id} className={item.quantity_remaining < 5 ? 'low-stock' : ''}>
+                  <tr key={item.id}>
                     <td>{item.frame_product_id}</td>
                     <td>{item.frame_name}</td>
                     <td>{item.frame_brand}</td>
                     <td>{item.quantity_received}</td>
                     <td>{item.quantity_sold}</td>
-                    <td className={item.quantity_remaining < 5 ? 'low-stock-cell' : ''}>
+                    <td className={item.quantity_remaining < 5 ? 'low-stock' : ''}>
                       {item.quantity_remaining}
                     </td>
                     <td>${parseFloat(item.cost_per_unit).toFixed(2)}</td>
                     <td>${parseFloat(item.total_cost).toFixed(2)}</td>
                     <td>${parseFloat(item.total_revenue).toFixed(2)}</td>
-                    <td className={parseFloat(item.total_profit) >= 0 ? 'profit' : 'loss'}>
-                      ${parseFloat(item.total_profit).toFixed(2)}
-                    </td>
                     <td>{new Date(item.last_restocked).toLocaleDateString()}</td>
                   </tr>
                 ))}

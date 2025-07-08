@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
+
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8001/api';
 
 interface Frame {
   frame_id: string;
@@ -61,7 +63,7 @@ const ProductCatalog: React.FC = () => {
   const fetchFrames = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await axios.get('http://127.0.0.1:8001/api/frames/', {
+      const response = await axios.get(`${API_BASE_URL}/frames/`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -78,7 +80,7 @@ const ProductCatalog: React.FC = () => {
   const fetchFilterChoices = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await axios.get('http://127.0.0.1:8001/api/frames/choices/', {
+      const response = await axios.get(`${API_BASE_URL}/frames/choices/`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -89,7 +91,7 @@ const ProductCatalog: React.FC = () => {
     }
   };
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(async () => {
     let filtered = frames;
 
     // Apply search filter
@@ -116,7 +118,7 @@ const ProductCatalog: React.FC = () => {
     }
 
     setFilteredFrames(filtered);
-  };
+  }, [frames, searchTerm, filters]);
 
   const handleFilterChange = (filterType: string, value: string) => {
     setFilters(prev => ({
@@ -166,7 +168,7 @@ const ProductCatalog: React.FC = () => {
 
       const token = localStorage.getItem('access_token');
       const response = await axios.post(
-        'http://127.0.0.1:8001/api/frames/upload_csv/',
+        `${API_BASE_URL}/frames/upload_csv/`,
         formData,
         {
           headers: {
@@ -201,18 +203,15 @@ const ProductCatalog: React.FC = () => {
     }
   };
 
-  const downloadTemplate = async () => {
+  const handleDownloadTemplate = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await axios.get(
-        'http://127.0.0.1:8001/api/frames/csv_template/',
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-          responseType: 'blob',
-        }
-      );
+      const response = await axios.get(`${API_BASE_URL}/frames/csv_template/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        responseType: 'blob',
+      });
 
       // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -282,7 +281,7 @@ const ProductCatalog: React.FC = () => {
               </button>
               
               <button
-                onClick={downloadTemplate}
+                onClick={handleDownloadTemplate}
                 className="template-btn"
               >
                 Download Template

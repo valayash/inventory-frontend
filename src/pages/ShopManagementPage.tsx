@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import CreateShopForm from '../components/CreateShopForm';
 import EditShopForm from '../components/EditShopForm';
+import { Link } from 'react-router-dom';
+
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8001/api';
 
 interface Shop {
   id: number;
@@ -47,8 +50,8 @@ const ShopManagementPage: React.FC = () => {
 
   const fetchShops = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await axios.get('http://127.0.0.1:8001/api/shops/', {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_BASE_URL}/shops/`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
