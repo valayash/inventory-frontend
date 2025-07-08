@@ -32,7 +32,7 @@ const ShopOwnerDashboard: React.FC = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('token');
       
       // Fetch dashboard summary
       const [summaryResponse, topProductsResponse] = await Promise.all([
