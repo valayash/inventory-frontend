@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
-  const token = localStorage.getItem('access_token');
+  const token = localStorage.getItem('token');
   const userInfo = localStorage.getItem('user_info');
 
   // Check if user is authenticated
