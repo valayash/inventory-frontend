@@ -62,7 +62,7 @@ const ProductCatalog: React.FC = () => {
 
   const fetchFrames = async () => {
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('token');
       const response = await axios.get(`${API_BASE_URL}/frames/`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -79,7 +79,7 @@ const ProductCatalog: React.FC = () => {
 
   const fetchFilterChoices = async () => {
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('token');
       const response = await axios.get(`${API_BASE_URL}/frames/choices/`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -166,7 +166,7 @@ const ProductCatalog: React.FC = () => {
       const formData = new FormData();
       formData.append('file', csvFile);
 
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('token');
       const response = await axios.post(
         `${API_BASE_URL}/frames/upload_csv/`,
         formData,
@@ -205,7 +205,7 @@ const ProductCatalog: React.FC = () => {
 
   const handleDownloadTemplate = async () => {
     try {
-      const token = localStorage.getItem('access_token');
+        const token = localStorage.getItem('token');
       const response = await axios.get(`${API_BASE_URL}/frames/csv_template/`, {
         headers: {
           'Authorization': `Bearer ${token}`
